@@ -7,7 +7,7 @@ import (
 )
 
 func loadTestBook(t *testing.T) Book {
-	fd, err := os.OpenFile("context_test_book_content.txt", os.O_RDONLY, 0)
+	fd, err := os.OpenFile("search_test_book_content.txt", os.O_RDONLY, 0)
 	if err != nil {
 		t.Fatal("Failed to open book content file: ", err)
 	}

@@ -39,15 +39,15 @@ Take all my selfe`
 		"And Ile no longer be a Capulet"
 
 	provider := NewProvider()
-	context, err := provider.ProvideContext(&content, 321, 335)
+	context, err := provider.ProvideContext(content, 321, 335)
 	if err != nil {
 		t.Fatal("Failed to gather context: ", err)
 	}
 
 	if context != expectedContext {
 		t.Logf("Returned context is different than expected\n")
-		t.Logf("Wanted: %s\n", expectedContext)
-		t.Logf("Have: %s\n", context)
+		t.Logf("Wanted: %#v\n", expectedContext)
+		t.Logf("  Have: %#v\n", context)
 		t.Fail()
 	}
 }

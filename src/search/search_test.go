@@ -40,10 +40,10 @@ func TestExpectedResult(t *testing.T) {
 		t.Fatalf("Phrase does not match, Wanted: \"%s\", Have: \"%s\"", expectedResult.Phrase, result.Phrase)
 	}
 	if expectedResult.PosS != result.PosS {
-		t.Fatalf("PosS does not match, Wanted: \"%s\", Have: \"%s\"", expectedResult.PosS, result.PosS)
+		t.Fatalf("PosS does not match, Wanted: \"%d\", Have: \"%d\"", expectedResult.PosS, result.PosS)
 	}
 	if expectedResult.PosE != result.PosE {
-		t.Fatalf("PosE does not match, Wanted: \"%s\", Have: \"%s\"", expectedResult.PosE, result.PosE)
+		t.Fatalf("PosE does not match, Wanted: \"%d\", Have: \"%d\"", expectedResult.PosE, result.PosE)
 	}
 }
 

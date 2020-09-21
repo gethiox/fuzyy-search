@@ -40,9 +40,8 @@ func TestParseBooks(t *testing.T) {
 
 (...)
 `
-
 	books, err := parseBooks(testInput)
-	assert.Nil(t, err, "error not expected here")
+	assert.Nil(t, err)
 
 	expectedBooks := []Book{
 		{
@@ -56,5 +55,5 @@ func TestParseBooks(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, expectedBooks, books, "shiet")
+	assert.Equal(t, expectedBooks, books)
 }

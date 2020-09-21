@@ -8,12 +8,13 @@ import (
 var queryResponseRegex = regexp.MustCompile(
 	"(?s)" + // flag includes newline character into the scope of dot (.)
 		"<li class=\"booklink\">.*?" +
-		"<a class=\"link\" href=\"(?P<linkref>.*?)\".*?" +
-		"<span class=\"title\">(?P<title>.*?)</span>.*?" +
-		"<span class=\"subtitle\">(?P<subtitle>.*?)</span>.*?" +
+		"<a class=\"link\" href=\"(?P<linkref>.*?)\".*?" + // 1
+		"<span class=\"title\">(?P<title>.*?)</span>.*?" + // 2
+		"<span class=\"subtitle\">(?P<subtitle>.*?)</span>.*?" + // 3
 		"</li>",
 )
 
+// parseBooks parses book search query
 func parseBooks(responseBody string) ([]Book, error) {
 	var books []Book
 
@@ -23,7 +24,11 @@ func parseBooks(responseBody string) ([]Book, error) {
 	}
 
 	for _, match := range matches {
-		book, err := NewBook(match[2], match[3], match[1])
+		title := match[2]
+		author := match[3]
+		linkref := match[1]
+
+		book, err := NewBook(title, author, linkref)
 		if err != nil {
 			continue
 		}

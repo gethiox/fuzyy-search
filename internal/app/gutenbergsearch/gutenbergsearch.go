@@ -58,7 +58,7 @@ func NewSearcher() Searcher {
 
 		dataProvider:        data.NewProvider(),
 		contextProvider:     context.NewProvider(),
-		searchEngine:        search.NewSearcher(),
+		searchEngine:        search.NewSearcher(2, true),
 		searchEngineWorkers: 8,
 	}
 }

@@ -1,4 +1,4 @@
-package gutenberg_search
+package gutenbergsearch
 
 import (
 	"fmt"

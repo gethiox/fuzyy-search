@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestParseBooks(t *testing.T) {
+func TestFindBooks(t *testing.T) {
 	testInput := `
 (...)
 
@@ -40,20 +40,44 @@ func TestParseBooks(t *testing.T) {
 
 (...)
 `
-	books, err := parseBooks(testInput)
+	books, err := findBooks(testInput)
 	assert.Nil(t, err)
 
 	expectedBooks := []Book{
 		{
-			title:       "Shakespeare's Tragedy of Romeo and Juliet",
-			author:      "William Shakespeare",
+			Title:       "Shakespeare's Tragedy of Romeo and Juliet",
+			Author:      "William Shakespeare",
 			bookLinkref: "/ebooks/47960",
 		}, {
-			title:       "Dramas de Guillermo Shakspeare [vol. 1] (Spanish)",
-			author:      "William Shakespeare",
+			Title:       "Dramas de Guillermo Shakspeare [vol. 1] (Spanish)",
+			Author:      "William Shakespeare",
 			bookLinkref: "/ebooks/53207",
 		},
 	}
 
 	assert.Equal(t, expectedBooks, books)
+}
+
+func TestFindTxtLinkref(t *testing.T) {
+	testInput := `
+(...)
+
+<td class="noprint">
+<a href="/ebooks/send/msdrive/32571.kindle.noimages" title="Send to OneDrive." rel="nofollow"><span class="icon icon_msdrive"></span></a>
+</td>
+</tr><tr class="even" about="https://www.gutenberg.org/files/32571/32571-0.txt" typeof="pgterms:file">
+<td><span class="icon icon_book"></span></td>
+<td property="dcterms:format" content="text/plain; charset=utf-8" datatype="dcterms:IMT" class="unpadded icon_save"><a href="/files/32571/32571-0.txt" type="text/plain; charset=utf-8" class="link" title="Download">Plain Text UTF-8</a></td>
+<td class="noscreen">https://www.gutenberg.org/files/32571/32571-0.txt</td>
+<td class="right" property="dcterms:extent" content="315190">308 kB</td>
+<td class="noprint">
+</td>
+
+(...)
+`
+	linkref, err := findTxtLinkref(testInput)
+	assert.Nil(t, err)
+
+	assert.Equal(t, "/files/32571/32571-0.txt", linkref)
+
 }

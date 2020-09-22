@@ -18,7 +18,7 @@ var (
 	findTxtLinkrefRegexStage1 = regexp.MustCompile("(?s)<a href.+?</a>")
 	findTxtLinkrefRegexStage2 = regexp.MustCompile(
 		"(?s)" +
-			"<a href=\"(?P<txtlinkref>\\S*?)\".*?" +
+			"<a href=\"(?P<txtlinkref>\\S*?)\".*?" + // group 1
 			"title=\"Download\">Plain Text.*?" +
 			"</a>",
 	)

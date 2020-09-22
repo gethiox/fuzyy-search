@@ -1,4 +1,4 @@
-package dataprovider
+package data
 
 import (
 	"errors"
@@ -14,7 +14,11 @@ type Book struct {
 	Title  string
 	Author string
 
-	bookLinkref string // eg. "/ebooks/34505"
+	bookLinkref string // eg. "/ebooks/34505", can be treated as unique ID
+}
+
+func (b *Book) ID() string {
+	return b.bookLinkref
 }
 
 func NewBook(title, author, linkref string) (Book, error) {

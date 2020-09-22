@@ -1,4 +1,4 @@
-package dataprovider
+package data
 
 import (
 	"testing"

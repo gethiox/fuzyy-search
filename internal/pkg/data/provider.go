@@ -17,6 +17,16 @@ type Book struct {
 	bookLinkref string // eg. "/ebooks/34505", can be treated as unique ID
 }
 
+type errNoLinkRef struct{}
+
+func (e *errNoLinkRef) Error() string {
+	return "txt linkref is not available"
+}
+
+func errTxtLinkRefNotAvailable() error { return &errNoLinkRef{} }
+
+var ErrTxtLinkRefNotAvailable = errTxtLinkRefNotAvailable()
+
 func (b *Book) ID() string {
 	return b.bookLinkref
 }
@@ -118,7 +128,7 @@ func (p *httpProvider) findTxtLinkRef(book Book) (string, error) {
 
 	linkref, err := findTxtLinkref(string(body))
 	if err != nil {
-		return "", fmt.Errorf("reading response failed: %w", err)
+		return "", fmt.Errorf("finding txt linkref failed: %w", err)
 	}
 
 	return linkref, nil

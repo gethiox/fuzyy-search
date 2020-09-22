@@ -57,7 +57,7 @@ func findBooks(responseBody string) ([]Book, error) {
 func findTxtLinkref(responseBody string) (string, error) {
 	matches := findTxtLinkrefRegexStage1.FindAllString(responseBody, -1)
 	if len(matches) == 0 {
-		return "", errors.New("no results")
+		return "", &errNoLinkRef{}
 	}
 
 	for _, stage2 := range matches {
@@ -68,5 +68,5 @@ func findTxtLinkref(responseBody string) (string, error) {
 		return matches[1], nil
 	}
 
-	return "", errors.New("no results")
+	return "", &errNoLinkRef{}
 }

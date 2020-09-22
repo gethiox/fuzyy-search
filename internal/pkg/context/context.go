@@ -17,8 +17,12 @@ func (p *provider) ProvideContext(content string, PosS, PosB int) (string, error
 			return content[PosS : PosS+i-1], nil
 		}
 		lastChar = c
+
+		if i > 200 {
+			return content[PosS : PosS+i], nil
+		}
 	}
-	return "", errors.New("context not selected")
+	return "", errors.New("context selection failed")
 }
 
 func NewProvider() Provider {

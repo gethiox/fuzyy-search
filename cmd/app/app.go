@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -34,14 +35,16 @@ func newError(code, message string) []byte {
 }
 
 const (
-	ErrMissingFiled = "missing_filed"
-	ErrJSONParse    = "bad_payload"
-	ErrServerError  = "request_failed"
+	ErrMissingFiled   = "missing_filed"
+	ErrJSONParse      = "bad_payload"
+	ErrServerError    = "request_failed"
+	ErrPhraseNotFound = "phrase_not_found"
 )
 
 var searchService gutenbergsearch.Searcher
 
 func search(w http.ResponseWriter, r *http.Request) {
+	// defer close(w)
 	var payload Payload
 
 	data, err := ioutil.ReadAll(r.Body)
@@ -91,6 +94,12 @@ func search(w http.ResponseWriter, r *http.Request) {
 
 	result, err := searchService.Search(*payload.Title, *payload.Phrase)
 	if err != nil {
+		if errors.Is(err, gutenbergsearch.ErrPhraseNotFound) {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write(newError(ErrPhraseNotFound, "given phrase not found in books that matches given title"))
+			return
+		}
+
 		log.Printf("Unexpected error ocurred: %s", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write(newError(ErrServerError, "Something blows up on backend side, check logs for more details"))
@@ -114,6 +123,7 @@ func main() {
 		ReadTimeout:  15 * time.Second,
 	}
 
+	log.Printf("Starting http server")
 	err := srv.ListenAndServe()
 	if err != nil {
 		log.Fatalf("unexpected server error: %s", err)

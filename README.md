@@ -1,3 +1,20 @@
+## Build and run (Docker)
+
+Make sure your Docker is installed and running, then simply run (in root repository directory):
+
+```shell
+./build/docker-build.sh && ./build/docker-run.sh
+```
+
+## Build and run (locally)
+
+Make sure your Go is up to date and execute (in root repository directory):
+
+```shell
+./build/local-build.sh && ./build/local-run.sh
+```
+
+
 ### Example app logs
 
 demonstrates working caching mechanism

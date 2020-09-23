@@ -22,7 +22,7 @@ var (
 type book struct {
 	title, author string
 	uniqueID      string
-	content       *string
+	content       string
 }
 
 type result struct {
@@ -145,7 +145,7 @@ func (s *searcher) Search(title, phrase string) (string, error) {
 					continue
 				}
 
-				withContext, err := s.contextProvider.ProvideContext(*book.content, searcgResult.PosS, searcgResult.PosE)
+				withContext, err := s.contextProvider.ProvideContext(book.content, searcgResult.PosS, searcgResult.PosE)
 				if err != nil {
 					log.Printf("failed to provide context for \"%s\" match: %s", searcgResult.Phrase, err)
 					jobs.Done()
@@ -186,7 +186,7 @@ func (s *searcher) Search(title, phrase string) (string, error) {
 			title:    bookPosition.Title,
 			author:   bookPosition.Author,
 			uniqueID: bookPosition.ID(),
-			content:  &bookContent, // TODO: not sure that's a good idea
+			content:  bookContent,
 		}
 	}
 
@@ -220,7 +220,7 @@ func (s *searcher) Search(title, phrase string) (string, error) {
 							title:    bookPosition.Title,
 							author:   bookPosition.Author,
 							uniqueID: bookPosition.ID(),
-							content:  &content, // TODO: not sure that's a good idea
+							content:  content,
 						}
 						s.bookCache.Set(bookPosition.ID(), content, cache.DefaultExpiration)
 						continue main
@@ -236,7 +236,7 @@ func (s *searcher) Search(title, phrase string) (string, error) {
 							title:    bookPosition.Title,
 							author:   bookPosition.Author,
 							uniqueID: bookPosition.ID(),
-							content:  &content, // TODO: not sure that's a good idea
+							content:  content,
 						}
 					}
 					continue main
@@ -249,7 +249,7 @@ func (s *searcher) Search(title, phrase string) (string, error) {
 					title:    bookPosition.Title,
 					author:   bookPosition.Author,
 					uniqueID: bookPosition.ID(),
-					content:  &content, // TODO: not sure that's a good idea
+					content:  content,
 				}
 				break
 			}

@@ -15,7 +15,7 @@ type Result struct {
 }
 
 type Searcher interface {
-	Search(content *string, phrase string) (Result, error)
+	Search(content string, phrase string) (Result, error)
 }
 
 type localSearcher struct {
@@ -68,10 +68,10 @@ const (
 	TextState
 )
 
-func (l *localSearcher) Search(content *string, phrase string) (Result, error) {
+func (l *localSearcher) Search(content string, phrase string) (Result, error) {
 	var indexes = make([]Indexes, 0)
 
-	contentFields, contentIndexes := BookFields(*content, 100)
+	contentFields, contentIndexes := BookFields(content, 100)
 	phraseFields := strings.Fields(phrase)
 
 	if len(phraseFields) < 1 {
@@ -124,7 +124,7 @@ func (l *localSearcher) Search(content *string, phrase string) (Result, error) {
 	}
 
 	return Result{
-		Phrase: (*content)[choice.a:choice.b],
+		Phrase: content[choice.a:choice.b],
 		PosS:   choice.a,
 		PosE:   choice.b,
 	}, nil

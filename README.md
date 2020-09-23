@@ -100,4 +100,5 @@ demonstrates working caching mechanism
 2020/09/22 17:21:57 no result for book ("Romeo and Juliet. French (French)" - William Shakespeare [/ebooks/18143]): pattern not found
 2020/09/22 17:21:57 no result for book ("Romeo and Juliet. Finnish (Finnish)" - William Shakespeare [/ebooks/15643]): pattern not found
 [fourth request, same query as previous one, answer directly returned from cache]
-2020/09/22 17:22:21 found cached query result```
+2020/09/22 17:22:21 found cached query result
+```

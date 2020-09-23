@@ -226,7 +226,6 @@ func searchWorker(n int, s *searcher, resultCtx context2.Context, title, phrase 
 				result: withContext,
 			}
 			jobs.Done()
-			break
 		}
 	}
 }
@@ -240,6 +239,7 @@ main:
 			return // closed channel
 		}
 		downloadTries := 3
+	try:
 		for i := 0; i < downloadTries; i++ {
 			time.Sleep(randomRange(s.downloadDelay[0], s.downloadDelay[1]))
 
@@ -253,15 +253,20 @@ main:
 						err,
 					)
 					// return an empty book anyway for caching purpose, TODO: could it be handled better
-					booksToAnalyze <- book{
-						title:    bookPosition.Title,
-						author:   bookPosition.Author,
-						uniqueID: bookPosition.ID(),
-						content:  "",
+					select {
+					case <-resultCtx.Done():
+						log.Printf("Downloading interrupted")
+						return
+					case <-time.After(time.Millisecond * 5):
+						booksToAnalyze <- book{
+							title:    bookPosition.Title,
+							author:   bookPosition.Author,
+							uniqueID: bookPosition.ID(),
+							content:  "",
+						}
+						s.bookCache.Set(bookPosition.ID(), "", cache.DefaultExpiration)
+						continue main
 					}
-					s.bookCache.Set(bookPosition.ID(), "", cache.DefaultExpiration)
-					continue main
-
 				}
 
 				log.Printf("download error: %s", err)
@@ -279,7 +284,7 @@ main:
 					uniqueID: bookPosition.ID(),
 					content:  content,
 				}
-				break
+				break try
 			}
 		}
 	}

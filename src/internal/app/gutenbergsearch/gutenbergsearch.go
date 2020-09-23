@@ -45,7 +45,8 @@ type searcher struct {
 	dataProvider        data.Provider
 	contextProvider     context.Provider
 	searchEngine        search.Searcher
-	searchEngineWorkers int // per request
+	downloadDelay       [2]time.Duration // min, max
+	searchEngineWorkers int              // per request
 }
 
 func NewSearcher() Searcher {
@@ -58,7 +59,8 @@ func NewSearcher() Searcher {
 
 		dataProvider:        data.NewProvider(),
 		contextProvider:     context.NewProvider(),
-		searchEngine:        search.NewSearcher(2, true),
+		searchEngine:        search.NewSearcher(4, true),
+		downloadDelay:       [2]time.Duration{time.Second, time.Second * 2},
 		searchEngineWorkers: 8,
 	}
 }
@@ -202,7 +204,7 @@ func (s *searcher) Search(title, phrase string) (string, error) {
 			}
 			downloadTries := 3
 			for i := 0; i < downloadTries; i++ {
-				time.Sleep(randomRange(time.Second*4, time.Second*10))
+				time.Sleep(randomRange(s.downloadDelay[0], s.downloadDelay[1]))
 
 				content, err := s.dataProvider.DownloadBook(bookPosition)
 				if err != nil {

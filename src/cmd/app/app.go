@@ -108,6 +108,7 @@ func search(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(result))
+	return
 }
 
 func main() {
@@ -118,9 +119,9 @@ func main() {
 
 	srv := &http.Server{
 		Handler:      router,
-		Addr:         "127.0.0.1:8000",
-		WriteTimeout: 15 * time.Second,
-		ReadTimeout:  15 * time.Second,
+		Addr:         ":8000",
+		WriteTimeout: 120 * time.Second,
+		ReadTimeout:  120 * time.Second,
 	}
 
 	log.Printf("Starting http server")

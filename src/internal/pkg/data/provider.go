@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"strings"
@@ -50,6 +51,11 @@ func NewBook(title, author, linkref string) (Book, error) {
 type Provider interface {
 	GetBooks(title string) ([]Book, error)
 	DownloadBook(book Book) (string, error)
+}
+
+func randomRange(a, b time.Duration) time.Duration {
+	rawI := rand.Intn(int(b - a))
+	return time.Duration(int(a) + rawI)
 }
 
 type httpProvider struct {
@@ -141,7 +147,7 @@ func (p *httpProvider) DownloadBook(book Book) (string, error) {
 		return "", fmt.Errorf("failed to get txt linkref: %w", err)
 	}
 	// some sleep to pretend real-human operation
-	time.Sleep(time.Second * 2) // TODO: randomize
+	time.Sleep(randomRange(time.Millisecond*500, time.Second*2))
 
 	requestUrl := fmt.Sprintf("%s%s", p.baseUrl(), linkRef)
 

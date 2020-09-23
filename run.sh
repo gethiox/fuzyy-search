@@ -1,2 +1,2 @@
 #!/bin/bash
-docker run --rm -it -p 80:80 --name fuzzy_search fuzzy-search
+docker run --rm -it -p 8000:8000 --name fuzzy_search fuzzy-search

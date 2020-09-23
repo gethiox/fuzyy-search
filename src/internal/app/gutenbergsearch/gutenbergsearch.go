@@ -60,7 +60,7 @@ func NewSearcher() Searcher {
 
 		dataProvider:        data.NewProvider(),
 		contextProvider:     context.NewProvider(),
-		searchEngine:        search.NewSearcher(4, true),
+		searchEngine:        search.NewSearcher(2, true),
 		downloadDelay:       [2]time.Duration{time.Second, time.Second * 2},
 		searchEngineWorkers: 8,
 	}

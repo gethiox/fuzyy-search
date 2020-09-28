@@ -51,7 +51,7 @@ func search(searchService gutenbergsearch.Searcher) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var payload Payload
 
-		data, err := ioutil.ReadAll(r.Body)
+		rawData, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			log.Printf("read request failed: %s", err)
 			w.WriteHeader(http.StatusBadRequest)
@@ -59,7 +59,7 @@ func search(searchService gutenbergsearch.Searcher) http.Handler {
 			return
 		}
 
-		err = json.Unmarshal(data, &payload)
+		err = json.Unmarshal(rawData, &payload)
 		if err != nil {
 			log.Printf("unmarshall failed: %s", err)
 			w.WriteHeader(http.StatusBadRequest)
@@ -101,12 +101,17 @@ func search(searchService gutenbergsearch.Searcher) http.Handler {
 			return
 		}
 
-		// r.Context()
+		// Search() could receive request context for processing cancellation purpose
 		result, err := searchService.Search(*payload.Title, *payload.Phrase)
 		if err != nil {
-			if errors.Is(err, gutenbergsearch.ErrPhraseNotFound) {
+			switch {
+			case errors.Is(err, gutenbergsearch.ErrPhraseNotFound):
 				w.WriteHeader(http.StatusNotFound)
 				_, _ = w.Write(newError(ErrPhraseNotFound, "given phrase not found in books that matches given title"))
+				return
+			case errors.Is(err, gutenbergsearch.ErrTooLong):
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = w.Write(newError(ErrServerError, "requested processing exceeded allowed time"))
 				return
 			}
 
@@ -168,8 +173,8 @@ func main() {
 	srv := &http.Server{
 		Handler:      router,
 		Addr:         ":8000",
-		WriteTimeout: 120 * time.Second,
-		ReadTimeout:  120 * time.Second,
+		WriteTimeout: cfg.serverWriteTimeout,
+		ReadTimeout:  cfg.serverReadTimeout,
 	}
 
 	log.Printf("Starting http server")

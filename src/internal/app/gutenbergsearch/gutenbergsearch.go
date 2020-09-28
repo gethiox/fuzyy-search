@@ -17,6 +17,7 @@ import (
 
 var (
 	ErrPhraseNotFound = errors.New("phrase not found")
+	ErrTooLong        = errors.New("request took too long")
 )
 
 type downloadJobs struct {
@@ -222,15 +223,17 @@ func (s *searcher) Search(title, phrase string) (string, error) {
 	}()
 
 	select {
-	case result := <-resultChan:
-		s.answerCache.Set(twoPartCacheKey(title, phrase), result.result)
-		log.Printf("result found! ('%s' - %s)", result.book.title, result.book.author)
-		return result.result, nil
+	case result, ok := <-resultChan:
+		if ok {
+			s.answerCache.Set(twoPartCacheKey(title, phrase), result.result)
+			log.Printf("result found! ('%s' - %s)", result.book.title, result.book.author)
+			return result.result, nil
+		}
+		// processing ended but no result pushed on channel
+		return "", ErrPhraseNotFound
 	case <-time.After(time.Second * 120):
 		// processing took too long
-		return "", ErrPhraseNotFound
-		// case
-		// log.Printf("result not found")
+		return "", ErrTooLong
 	}
 }
 

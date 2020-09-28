@@ -126,6 +126,9 @@ func stringToIntFallback(s string, fallback int) int {
 }
 
 type Config struct {
+	serverReadTimeout  time.Duration
+	serverWriteTimeout time.Duration
+
 	answerCache                bool // enable/disable cache based on query sent to application and it's answer
 	answerCacheExpiration      time.Duration
 	answerCacheCleanupInterval time.Duration
@@ -141,9 +144,10 @@ type Config struct {
 	downloadDelayMin time.Duration // download Task limitation to emulate human-like behaviour to prevent from banning.
 	downloadDelayMax time.Duration // min/max value, each download gets random value from that range
 
-	searchWorkers      int  // search worker goroutines (inefficient without cached content)
-	searchMaxDistance  int  // fuzzy-search engine distance option
-	searchRandomResult bool // returns a random match in the scope of given book instead of a first found match [Note: cannot work properly with with CACHE_ANSWER enabled]
+	searchWorkers      int           // search worker goroutines (inefficient without cached content)
+	searchMaxDistance  int           // fuzzy-search engine distance option
+	searchRandomResult bool          // returns a random match in the scope of given book instead of a first found match [Note: cannot work properly with with CACHE_ANSWER enabled]
+	searchTimeout      time.Duration // maximum time allowed to spent by server for each search request
 
 	providerUserAgent string        // user-agent header used for provider's requests
 	providerTimeout   time.Duration // provider http client timeout
@@ -151,6 +155,9 @@ type Config struct {
 
 func GetDefaultConfig() *Config {
 	return &Config{
+		serverReadTimeout:  time.Minute * 2,
+		serverWriteTimeout: time.Minute * 2,
+
 		answerCache:                true,
 		answerCacheExpiration:      time.Hour * 4,
 		answerCacheCleanupInterval: time.Minute * 31,
@@ -169,6 +176,7 @@ func GetDefaultConfig() *Config {
 		searchWorkers:      8,
 		searchMaxDistance:  2,
 		searchRandomResult: false,
+		searchTimeout:      time.Minute * 2,
 
 		providerUserAgent: "Mozilla/5.0 (X11; Linux x86_64; rv:80.0) Gecko/20100101 Firefox/80.0",
 		providerTimeout:   time.Second * 30,
@@ -197,9 +205,10 @@ func GetConfig() *Config {
 	cfg.searchWorkers = stringToIntFallback(os.Getenv("SEARCH_WORKERS"), defaultCfg.searchWorkers)
 	cfg.searchMaxDistance = stringToIntFallback(os.Getenv("SEARCH_MAX_DISTANCE"), defaultCfg.searchMaxDistance)
 	cfg.searchRandomResult = stringToBoolFallback(os.Getenv("SEARCH_RANDOM_RESULT"), defaultCfg.searchRandomResult)
+	cfg.searchTimeout = stringToDurationFallback(os.Getenv("SEARCH_TIMEOUT"), defaultCfg.searchTimeout)
 
-	cfg.providerUserAgent = stringFallback(os.Getenv("USER_AGENT"), defaultCfg.providerUserAgent)
-	cfg.providerUserAgent = stringFallback(os.Getenv("USER_AGENT"), defaultCfg.providerUserAgent)
+	cfg.providerUserAgent = stringFallback(os.Getenv("PROVIDER_USER_AGENT"), defaultCfg.providerUserAgent)
+	cfg.providerTimeout = stringToDurationFallback(os.Getenv("PROVIDER_TIMEOUT"), defaultCfg.providerTimeout)
 
 	return cfg
 }

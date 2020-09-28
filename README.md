@@ -28,7 +28,7 @@ echo '{"title": "Romeo & Juliet", "phrase": "oh romeo romeo"}'  | http "http://l
 ### Configuration
 
 Application can be configured with environment variables, most important keys are presented below.
-For more details and default values, please go to [config.go](src/cmd/api/config.go#L152).
+For more details and default values, please go to [config.go](src/cmd/api/config.go#L156).
 
 ```text
 CACHE_ANSWER          # 0-1: enable/disable cache based on query sent to application and it's answer
@@ -40,6 +40,7 @@ SEARCH_WORKERS        # search worker goroutines (inefficient without cached con
 SEARCH_MAX_DISTANCE   # fuzzy-search engine distance option
 SEARCH_RANDOM_RESULT  # returns a random match in the scope of given book instead of a first found match
                       #     [Note: cannot work properly with with CACHE_ANSWER enabled]
+SEARCH_TIMEOUT        # maximum time allowed to spent by server for each search request
 ```
 
 ### Example app logs

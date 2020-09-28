@@ -4,6 +4,7 @@ import (
 	context2 "context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"math/rand"
 	"sync"
@@ -12,13 +13,24 @@ import (
 	"fuzzy-search/internal/pkg/context"
 	"fuzzy-search/internal/pkg/data"
 	"fuzzy-search/internal/pkg/search"
-
-	"github.com/patrickmn/go-cache"
 )
 
 var (
 	ErrPhraseNotFound = errors.New("phrase not found")
 )
+
+type downloadJobs struct {
+	ctx           context2.Context
+	downloadQueue <-chan data.Book
+	outputQueue   chan<- book
+}
+
+type searchJobs struct {
+	ctx         context2.Context
+	phrase      string
+	searchQueue <-chan book
+	outputQueue chan<- result
+}
 
 type book struct {
 	title, author string
@@ -33,37 +45,12 @@ type result struct {
 
 type Searcher interface {
 	Search(title, phrase string) (string, error)
+	io.Closer
 }
 
-func randomRange(a, b time.Duration) time.Duration {
+func randomDurationRange(a, b time.Duration) time.Duration {
 	rawI := rand.Intn(int(b - a))
 	return time.Duration(int(a) + rawI)
-}
-
-type searcher struct {
-	bookCache, bookPositionsCache, queryCache *cache.Cache
-
-	dataProvider        data.Provider
-	contextProvider     context.Provider
-	searchEngine        search.Searcher
-	downloadDelay       [2]time.Duration // min, max
-	searchEngineWorkers int              // per request
-}
-
-func NewSearcher() Searcher {
-	rand.Seed(time.Now().UnixNano())
-
-	return &searcher{
-		bookCache:          cache.New(time.Hour, time.Minute*10), // heaviest cache, stores downloaded book content
-		bookPositionsCache: cache.New(time.Hour*4, time.Minute*10),
-		queryCache:         cache.New(time.Hour*4, time.Minute*31),
-
-		dataProvider:        data.NewProvider(),
-		contextProvider:     context.NewProvider(),
-		searchEngine:        search.NewSearcher(2, true),
-		downloadDelay:       [2]time.Duration{time.Second, time.Second * 2},
-		searchEngineWorkers: 8,
-	}
 }
 
 // twoPartCacheKey generate unique key for cache usage
@@ -72,8 +59,69 @@ func twoPartCacheKey(a, b string) string {
 	return a + "/" + b
 }
 
+type searcher struct {
+	answerCache, listingCache, contentCache Cache
+
+	dataProvider        data.Provider
+	contextProvider     context.Provider
+	searchEngine        search.Searcher
+	downloadDelay       [2]time.Duration // min, max
+	searchEngineWorkers int              // per request
+
+	tasksWg      sync.WaitGroup
+	exit         chan bool
+	downloadJobs chan downloadJobs
+	searchJobs   chan searchJobs
+}
+
+// randomizedResult - return random search match if exist in the scope of currently processed book, can't work
+// with AnswerCache enabled
+func NewSearcher(
+	searchWorkers int,
+	answerCache, listingCache, contentCache Cache,
+	dataProvider data.Provider,
+	contextProvider context.Provider,
+	searchEngine search.Searcher,
+	downloadDelay [2]time.Duration, // min/max
+
+) Searcher {
+	rand.Seed(time.Now().UnixNano())
+
+	s := &searcher{
+		answerCache:  answerCache,
+		listingCache: listingCache,
+		contentCache: contentCache,
+
+		dataProvider:        dataProvider,
+		contextProvider:     contextProvider,
+		searchEngine:        searchEngine,
+		downloadDelay:       downloadDelay,
+		searchEngineWorkers: searchWorkers,
+
+		tasksWg:      sync.WaitGroup{},
+		exit:         make(chan bool, 1),
+		downloadJobs: make(chan downloadJobs, 5),
+		searchJobs:   make(chan searchJobs, searchWorkers),
+	}
+	s.StartBackgroundTasks()
+	return s
+}
+
+func (s *searcher) Close() error {
+	close(s.exit)
+	s.tasksWg.Wait()
+	return nil
+}
+
+func (s *searcher) StartBackgroundTasks() {
+	go s.downloadTask()
+	s.tasksWg.Add(1)
+	go s.searchTask()
+	s.tasksWg.Add(1)
+}
+
 func (s *searcher) getBookPositions(title string) ([]data.Book, error) {
-	cachedBookPositions, ok := s.bookPositionsCache.Get(title)
+	cachedBookPositions, ok := s.listingCache.Get(title)
 	if ok {
 		bookPositions := cachedBookPositions.([]data.Book)
 		log.Printf("Read %d book positions from cache", len(bookPositions))
@@ -85,14 +133,14 @@ func (s *searcher) getBookPositions(title string) ([]data.Book, error) {
 		return bookPositions, fmt.Errorf("downloading book positions failed: %w", err)
 	}
 	log.Printf("Read %d book positions from external source", len(bookPositions))
-	s.bookPositionsCache.Set(title, bookPositions, cache.DefaultExpiration)
+	s.listingCache.Set(title, bookPositions)
 	return bookPositions, nil
 }
 
 func (s *searcher) Search(title, phrase string) (string, error) {
 	var exit bool
 
-	cachedAnswer, ok := s.queryCache.Get(twoPartCacheKey(title, phrase))
+	cachedAnswer, ok := s.answerCache.Get(twoPartCacheKey(title, phrase))
 	if ok {
 		log.Println("found cached query result")
 		return cachedAnswer.(string), nil
@@ -108,40 +156,17 @@ func (s *searcher) Search(title, phrase string) (string, error) {
 		return "", fmt.Errorf("no books available for this title")
 	}
 
-	resultCtx, resultCancel := context2.WithCancel(context2.Background())
-	jobsCtx, jobsCancel := context2.WithCancel(context2.Background())
-
 	var booksToAnalyze = make(chan book, 25)
-	defer close(booksToAnalyze)
+	// downloadTask will close this channel
 
 	var resultChan = make(chan result, 1)
-	defer close(resultChan)
-
-	jobs := sync.WaitGroup{}
-	for i := 0; i < len(bookPositions); i++ {
-		jobs.Add(1)
-	}
-
-	log.Printf("Run job monitor")
-	go func() {
-		log.Printf("Waiting to process all jobs")
-		jobs.Wait()
-		log.Printf("All jobs processed")
-		jobsCancel()
-	}()
-
-	log.Printf("Run search engine workers")
-
-	// Run search engine workers
-	for i := 0; i < s.searchEngineWorkers; i++ {
-		go searchWorker(i, s, resultCtx, title, phrase, booksToAnalyze, resultChan, &jobs)
-	}
+	// searchTask will close this channel
 
 	var booksProcessedFromCache = make(map[string]bool) // key: book unique ID
 
 	// Gather all currently cached books
 	for _, bookPosition := range bookPositions {
-		cachedBook, ok := s.bookCache.Get(bookPosition.ID())
+		cachedBook, ok := s.contentCache.Get(bookPosition.ID())
 		if !ok {
 			continue
 		}
@@ -161,131 +186,214 @@ func (s *searcher) Search(title, phrase string) (string, error) {
 		}
 	}
 
-	var downloadQueue = make(chan data.Book, 25)
-	defer close(downloadQueue)
+	downloadQueue := make(chan data.Book, 25)
 
-	// Missing books downloader
-	go downloadWorker(s, resultCtx, downloadQueue, booksToAnalyze)
+	downloadCtx, downloadCancel := context2.WithCancel(context2.Background())
+	defer downloadCancel()
+
+	s.downloadJobs <- downloadJobs{
+		ctx:           downloadCtx,
+		downloadQueue: downloadQueue,
+		outputQueue:   booksToAnalyze,
+	}
+
+	searchCtx, searchCancel := context2.WithCancel(context2.Background())
+	defer searchCancel()
+
+	s.searchJobs <- searchJobs{
+		ctx:         searchCtx,
+		phrase:      phrase,
+		searchQueue: booksToAnalyze,
+		outputQueue: resultChan,
+	}
 
 	// Queue up missing books to download
 	go func() {
+		var scheduled int
 		for _, bookPosition := range bookPositions {
 			_, ok := booksProcessedFromCache[bookPosition.ID()]
 			if ok {
 				continue
 			}
-
 			downloadQueue <- bookPosition
+			scheduled += 1
 		}
+		log.Printf("Scheduled %d books to download", scheduled)
 	}()
 
 	select {
 	case result := <-resultChan:
-		resultCancel()
-		s.queryCache.Set(twoPartCacheKey(title, phrase), result.result, cache.DefaultExpiration)
-		log.Printf("result found")
+		s.answerCache.Set(twoPartCacheKey(title, phrase), result.result)
+		log.Printf("result found! ('%s' - %s)", result.book.title, result.book.author)
 		return result.result, nil
-	case <-jobsCtx.Done():
-		resultCancel()
-		log.Printf("result not found")
+	case <-time.After(time.Second * 120):
+		// processing took too long
 		return "", ErrPhraseNotFound
+		// case
+		// log.Printf("result not found")
 	}
 }
 
-func searchWorker(n int, s *searcher, resultCtx context2.Context, title, phrase string, booksToAnalyze <-chan book, resultChan chan<- result, jobs *sync.WaitGroup) {
-	bookZeroValue := book{}
-	log.Printf("search worker %d started", n)
+// downloadTask constantly monitor incoming downloadJobs queue and starts goroutine for every incoming job
+func (s *searcher) downloadTask() {
+	log.Print("[[ downloadTask running ]]")
+root:
 	for {
-		book := <-booksToAnalyze
-		if book == bookZeroValue {
-			log.Printf("Search worker %d closed", n)
-			return // channel closed
-		}
-		searchResult, err := s.searchEngine.Search(book.content, phrase)
-		if err != nil {
-			log.Printf("no result for book (\"%s\" - %s [%s]): %s", book.title, book.author, book.uniqueID, err)
-			jobs.Done()
-			continue
-		}
-
-		withContext, err := s.contextProvider.ProvideContext(book.content, searchResult.PosS, searchResult.PosE)
-		if err != nil {
-			log.Printf("failed to provide context for \"%s\" match: %s", searchResult.Phrase, err)
-			jobs.Done()
-			continue
-		}
-
-		s.queryCache.Set(twoPartCacheKey(title, phrase), withContext, cache.DefaultExpiration)
 		select {
-		case <-resultCtx.Done():
-			log.Printf("Search worker %d closed", n)
-			return
-		case <-time.After(time.Millisecond * 5):
-			resultChan <- result{
-				book:   book,
-				result: withContext,
-			}
-			jobs.Done()
-		}
-	}
-}
-
-func downloadWorker(s *searcher, resultCtx context2.Context, downloadQueue <-chan data.Book, booksToAnalyze chan<- book) {
-	zeroValue := data.Book{}
-main:
-	for {
-		bookPosition := <-downloadQueue
-		if bookPosition == zeroValue {
-			return // closed channel
-		}
-		downloadTries := 3
-	try:
-		for i := 0; i < downloadTries; i++ {
-			time.Sleep(randomRange(s.downloadDelay[0], s.downloadDelay[1]))
-
-			content, err := s.dataProvider.DownloadBook(bookPosition)
-			if err != nil {
-				if errors.Is(err, data.ErrTxtLinkRefNotAvailable) {
-					// book position does not include text version
-					log.Printf(
-						"text book not available (\"%s\" - %s [%s]): %s",
-						bookPosition.Title, bookPosition.Author, bookPosition.ID(),
-						err,
-					)
-					// return an empty book anyway for caching purpose, TODO: could it be handled better
+		case <-s.exit:
+			break root
+		case job := <-s.downloadJobs:
+			go func(job downloadJobs) {
+				log.Print("[downloadTask] Download job acquired")
+				defer close(job.outputQueue)
+				startTime := time.Now()
+			main:
+				for bookToDownload := range job.downloadQueue {
 					select {
-					case <-resultCtx.Done():
-						log.Printf("Downloading interrupted")
+					case <-job.ctx.Done():
+						log.Printf("[DWorker] Downloading interrupted")
 						return
-					case <-time.After(time.Millisecond * 5):
-						booksToAnalyze <- book{
-							title:    bookPosition.Title,
-							author:   bookPosition.Author,
-							uniqueID: bookPosition.ID(),
-							content:  "",
+					case <-time.After(time.Millisecond * 10):
+					}
+
+					var content string
+					var err error
+					var failedTries int
+
+					downloadTries := 3
+
+				try:
+					for i := 0; i < downloadTries; i++ {
+
+						sleepTime := randomDurationRange(s.downloadDelay[0], s.downloadDelay[1])
+						log.Printf("[DWorker] sleeping for %s", sleepTime)
+						time.Sleep(sleepTime)
+
+						content, err = s.dataProvider.DownloadBook(bookToDownload)
+						if err != nil {
+							if errors.Is(err, data.ErrTxtLinkRefNotAvailable) {
+								// this book position apparently does not include text version
+								log.Printf(
+									"[DWorker] Text book not available (\"%s\" - %s [%s]): %s",
+									bookToDownload.Title, bookToDownload.Author, bookToDownload.ID(),
+									err,
+								)
+								// preparing an empty content as successful download for caching purpose
+								content = ""
+								break try
+							}
+
+							log.Printf("[DWorker] Download error: %s (try %d/%d)", err, i+1, downloadTries)
+							failedTries += 1
+							continue try
 						}
-						s.bookCache.Set(bookPosition.ID(), "", cache.DefaultExpiration)
+						// successful download
+						break try
+					}
+					if failedTries == downloadTries {
+						log.Print("[DWorker] Download failed: retries exceeded")
+						continue main
+					}
+
+					endTime := time.Now()
+
+					downloadedBook := book{
+						title:    bookToDownload.Title,
+						author:   bookToDownload.Author,
+						uniqueID: bookToDownload.ID(),
+						content:  content,
+					}
+
+					log.Printf("[DWorker] Book ('%s' - %s) downloaded in %s",
+						bookToDownload.Title,
+						bookToDownload.Author,
+						endTime.Sub(startTime),
+					)
+
+					s.contentCache.Set(bookToDownload.ID(), content)
+
+					select {
+					case <-job.ctx.Done():
+						log.Printf("[DWorker] Downloading interrupted")
+						return
+					case job.outputQueue <- downloadedBook:
+						continue main
+					case <-time.After(time.Second * 10):
+						log.Printf("[DWorker] Data push timeout")
 						continue main
 					}
 				}
-
-				log.Printf("download error: %s", err)
-				continue main
-			}
-			s.bookCache.Set(bookPosition.ID(), content, cache.DefaultExpiration)
-			select {
-			case <-resultCtx.Done():
-				log.Printf("Downloading interrupted")
-				return
-			case <-time.After(time.Millisecond * 5):
-				booksToAnalyze <- book{
-					title:    bookPosition.Title,
-					author:   bookPosition.Author,
-					uniqueID: bookPosition.ID(),
-					content:  content,
-				}
-				break try
-			}
+				log.Print("[downloadTask] Download job finished")
+			}(job)
 		}
 	}
+	log.Print("[[ downloadTask closed ]]")
+	s.tasksWg.Done()
+}
+
+// searchTask constantly monitor incoming searchJobs queue and starts goroutine for every incoming job
+func (s *searcher) searchTask() {
+	log.Print("[[ searchTask running ]]")
+root:
+	for {
+		select {
+		case <-s.exit:
+			break root
+		case job := <-s.searchJobs:
+			log.Print("[searchTask] Search job acquired")
+			workerWg := sync.WaitGroup{}
+			go func(job searchJobs) {
+				defer close(job.outputQueue)
+				for i := 0; i < s.searchEngineWorkers; i++ {
+					workerWg.Add(1)
+					go func(workerID int) {
+						defer workerWg.Done()
+						for book := range job.searchQueue {
+							select {
+							case <-job.ctx.Done():
+								log.Printf("[SWorker %d] Search interrupted", workerID)
+								return
+							case <-time.After(time.Millisecond * 10):
+							}
+
+							searchResult, err := s.searchEngine.Search(book.content, job.phrase)
+							if err != nil {
+								log.Printf("[SWorker %d] no result for book (\"%s\" - %s [%s]): %s", workerID, book.title, book.author, book.uniqueID, err)
+								return
+							}
+
+							withContext, err := s.contextProvider.ProvideContext(book.content, searchResult.PosS, searchResult.PosE)
+							if err != nil {
+								log.Printf("[SWorker %d] failed to provide context for \"%s\" match: %s", workerID, searchResult.Phrase, err)
+								return
+							}
+
+							s.answerCache.Set(twoPartCacheKey(book.title, job.phrase), withContext)
+							r := result{
+								book:   book,
+								result: withContext,
+							}
+
+							select {
+							case <-job.ctx.Done():
+								log.Printf("[SWorker %d] Search interrupted", workerID)
+								return
+							case job.outputQueue <- r:
+								return
+							case <-time.After(time.Second * 1):
+								log.Printf("[SWorker %d] Push search output timeout", workerID)
+								return
+							}
+						}
+					}(i)
+				}
+
+				log.Printf("[searchTask] %d search workers running", s.searchEngineWorkers)
+				workerWg.Wait()
+				log.Printf("[searchTask] search workers finishes")
+			}(job)
+		}
+	}
+	log.Print("[[ searchTask closed ]]")
+	s.tasksWg.Done()
 }

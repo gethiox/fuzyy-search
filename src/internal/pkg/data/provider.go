@@ -176,12 +176,12 @@ func (p *httpProvider) DownloadBook(book Book) (string, error) {
 	return string(body), nil
 }
 
-func NewProvider() Provider {
+func NewProvider(userAgent string, timeout time.Duration) Provider {
 	return &httpProvider{
 		Client: http.Client{
 			Timeout: time.Second * 60,
 		},
 		domain:    "www.gutenberg.org",
-		userAgent: "Mozilla/5.0 (X11; Linux x86_64; rv:80.0) Gecko/20100101 Firefox/80.0",
+		userAgent: userAgent,
 	}
 }

@@ -28,7 +28,7 @@ echo '{"title": "Romeo & Juliet", "phrase": "oh romeo romeo"}'  | http "http://l
 ### Configuration
 
 Application can be configured with environment variables, most important keys are presented below.
-For more details and default values, please go to [config.go](src/cmd/api/config.go#L142).
+For more details and default values, please go to [config.go](src/cmd/api/config.go#L152).
 
 ```text
 CACHE_ANSWER          # 0-1: enable/disable cache based on query sent to application and it's answer

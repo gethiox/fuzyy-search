@@ -45,107 +45,132 @@ SEARCH_TIMEOUT        # maximum time allowed to spent by server for each search 
 
 ### tests
 
-Bunch of tests are available, to run them simply run `go test ./...` in `src/` directory
+Bunch of tests are available, to run them simply run in `src/` directory:
 ```
-$ go test ./... -v
-=== RUN   Test_stringToTime
-=== RUN   Test_stringToTime/input:'592ms'
-=== RUN   Test_stringToTime/input:'595_ms'
-=== RUN   Test_stringToTime/input:'12s'
-=== RUN   Test_stringToTime/input:'15_s'
-=== RUN   Test_stringToTime/input:'12m'
-=== RUN   Test_stringToTime/input:'15_m'
-=== RUN   Test_stringToTime/input:'12h'
-=== RUN   Test_stringToTime/input:'15_h'
---- PASS: Test_stringToTime (0.00s)
-    --- PASS: Test_stringToTime/input:'592ms' (0.00s)
-    --- PASS: Test_stringToTime/input:'595_ms' (0.00s)
-    --- PASS: Test_stringToTime/input:'12s' (0.00s)
-    --- PASS: Test_stringToTime/input:'15_s' (0.00s)
-    --- PASS: Test_stringToTime/input:'12m' (0.00s)
-    --- PASS: Test_stringToTime/input:'15_m' (0.00s)
-    --- PASS: Test_stringToTime/input:'12h' (0.00s)
-    --- PASS: Test_stringToTime/input:'15_h' (0.00s)
-=== RUN   Test_stringToTimeErrors
-=== RUN   Test_stringToTimeErrors/input:''
-=== RUN   Test_stringToTimeErrors/input:'xd_s'
-=== RUN   Test_stringToTimeErrors/input:'ms_254'
---- PASS: Test_stringToTimeErrors (0.00s)
-    --- PASS: Test_stringToTimeErrors/input:'' (0.00s)
-    --- PASS: Test_stringToTimeErrors/input:'xd_s' (0.00s)
-    --- PASS: Test_stringToTimeErrors/input:'ms_254' (0.00s)
-=== RUN   Test_stringToBool
-=== RUN   Test_stringToBool/input:'1'
-=== RUN   Test_stringToBool/input:'true'
-=== RUN   Test_stringToBool/input:'TrUe'
-=== RUN   Test_stringToBool/input:'0'
-=== RUN   Test_stringToBool/input:'false'
-=== RUN   Test_stringToBool/input:'FaLsE'
---- PASS: Test_stringToBool (0.00s)
-    --- PASS: Test_stringToBool/input:'1' (0.00s)
-    --- PASS: Test_stringToBool/input:'true' (0.00s)
-    --- PASS: Test_stringToBool/input:'TrUe' (0.00s)
-    --- PASS: Test_stringToBool/input:'0' (0.00s)
-    --- PASS: Test_stringToBool/input:'false' (0.00s)
-    --- PASS: Test_stringToBool/input:'FaLsE' (0.00s)
-=== RUN   Test_stringToBoolErrors
-=== RUN   Test_stringToBoolErrors/input:''
-=== RUN   Test_stringToBoolErrors/input:'-1'
-=== RUN   Test_stringToBoolErrors/input:'-0'
-=== RUN   Test_stringToBoolErrors/input:'2'
-=== RUN   Test_stringToBoolErrors/input:'999'
-=== RUN   Test_stringToBoolErrors/input:'asdf'
-=== RUN   Test_stringToBoolErrors/input:'QWERTY'
---- PASS: Test_stringToBoolErrors (0.00s)
-    --- PASS: Test_stringToBoolErrors/input:'' (0.00s)
-    --- PASS: Test_stringToBoolErrors/input:'-1' (0.00s)
-    --- PASS: Test_stringToBoolErrors/input:'-0' (0.00s)
-    --- PASS: Test_stringToBoolErrors/input:'2' (0.00s)
-    --- PASS: Test_stringToBoolErrors/input:'999' (0.00s)
-    --- PASS: Test_stringToBoolErrors/input:'asdf' (0.00s)
-    --- PASS: Test_stringToBoolErrors/input:'QWERTY' (0.00s)
-=== RUN   Test_Search
-=== RUN   Test_Search/0:Unexpected_format_of_payload_(not_JSON)
-2020/09/28 08:02:10 unmarshall failed: invalid character 'a' looking for beginning of value
-=== RUN   Test_Search/1:Missing_fields
-=== RUN   Test_Search/2:Missing_'phrase'_field
-=== RUN   Test_Search/3:Missing_'title'_field
-=== RUN   Test_Search/4:Payload_OK
-=== RUN   Test_Search/5:Wrong_`title`_field_type
-2020/09/28 08:02:10 unmarshall failed: json: cannot unmarshal number into Go struct field Payload.title of type string
-=== RUN   Test_Search/6:Wrong_`phrase`_field_type
-2020/09/28 08:02:10 unmarshall failed: json: cannot unmarshal bool into Go struct field Payload.phrase of type string
---- PASS: Test_Search (0.00s)
-    --- PASS: Test_Search/0:Unexpected_format_of_payload_(not_JSON) (0.00s)
-    --- PASS: Test_Search/1:Missing_fields (0.00s)
-    --- PASS: Test_Search/2:Missing_'phrase'_field (0.00s)
-    --- PASS: Test_Search/3:Missing_'title'_field (0.00s)
-    --- PASS: Test_Search/4:Payload_OK (0.00s)
-    --- PASS: Test_Search/5:Wrong_`title`_field_type (0.00s)
-    --- PASS: Test_Search/6:Wrong_`phrase`_field_type (0.00s)
-=== RUN   Test_SearchError
-=== RUN   Test_SearchError/0:Phrase_not_found
-=== RUN   Test_SearchError/1:Processing_too_long
---- PASS: Test_SearchError (0.00s)
-    --- PASS: Test_SearchError/0:Phrase_not_found (0.00s)
-    --- PASS: Test_SearchError/1:Processing_too_long (0.00s)
-PASS
-ok  	fuzzy-search/cmd/api	0.007s
-?   	fuzzy-search/internal/app/gutenbergsearch	[no test files]
-=== RUN   TestExpectedContext
---- PASS: TestExpectedContext (0.00s)
-PASS
-ok  	fuzzy-search/internal/pkg/context	0.001s
-=== RUN   TestFindBooks
---- PASS: TestFindBooks (0.00s)
-=== RUN   TestFindTxtLinkref
---- PASS: TestFindTxtLinkref (0.00s)
-PASS
-ok  	fuzzy-search/internal/pkg/data	0.003s
-?   	fuzzy-search/internal/pkg/search	[no test files]
+go test ./... -v -cover
 ```
 
-62.5% coverage at the moment, not great, not terrible ¯\_(ツ)_/¯ 
+```
+$ go test ./... -v -cover
+  === RUN   Test_stringToTime
+  === RUN   Test_stringToTime/input:'592ms'
+  === RUN   Test_stringToTime/input:'595_ms'
+  === RUN   Test_stringToTime/input:'12s'
+  === RUN   Test_stringToTime/input:'15_s'
+  === RUN   Test_stringToTime/input:'12m'
+  === RUN   Test_stringToTime/input:'15_m'
+  === RUN   Test_stringToTime/input:'12h'
+  === RUN   Test_stringToTime/input:'15_h'
+  --- PASS: Test_stringToTime (0.00s)
+      --- PASS: Test_stringToTime/input:'592ms' (0.00s)
+      --- PASS: Test_stringToTime/input:'595_ms' (0.00s)
+      --- PASS: Test_stringToTime/input:'12s' (0.00s)
+      --- PASS: Test_stringToTime/input:'15_s' (0.00s)
+      --- PASS: Test_stringToTime/input:'12m' (0.00s)
+      --- PASS: Test_stringToTime/input:'15_m' (0.00s)
+      --- PASS: Test_stringToTime/input:'12h' (0.00s)
+      --- PASS: Test_stringToTime/input:'15_h' (0.00s)
+  === RUN   Test_stringToTimeErrors
+  === RUN   Test_stringToTimeErrors/input:''
+  === RUN   Test_stringToTimeErrors/input:'xd_s'
+  === RUN   Test_stringToTimeErrors/input:'ms_254'
+  --- PASS: Test_stringToTimeErrors (0.00s)
+      --- PASS: Test_stringToTimeErrors/input:'' (0.00s)
+      --- PASS: Test_stringToTimeErrors/input:'xd_s' (0.00s)
+      --- PASS: Test_stringToTimeErrors/input:'ms_254' (0.00s)
+  === RUN   Test_stringToBool
+  === RUN   Test_stringToBool/input:'1'
+  === RUN   Test_stringToBool/input:'true'
+  === RUN   Test_stringToBool/input:'TrUe'
+  === RUN   Test_stringToBool/input:'0'
+  === RUN   Test_stringToBool/input:'false'
+  === RUN   Test_stringToBool/input:'FaLsE'
+  --- PASS: Test_stringToBool (0.00s)
+      --- PASS: Test_stringToBool/input:'1' (0.00s)
+      --- PASS: Test_stringToBool/input:'true' (0.00s)
+      --- PASS: Test_stringToBool/input:'TrUe' (0.00s)
+      --- PASS: Test_stringToBool/input:'0' (0.00s)
+      --- PASS: Test_stringToBool/input:'false' (0.00s)
+      --- PASS: Test_stringToBool/input:'FaLsE' (0.00s)
+  === RUN   Test_stringToBoolErrors
+  === RUN   Test_stringToBoolErrors/input:''
+  === RUN   Test_stringToBoolErrors/input:'-1'
+  === RUN   Test_stringToBoolErrors/input:'-0'
+  === RUN   Test_stringToBoolErrors/input:'2'
+  === RUN   Test_stringToBoolErrors/input:'999'
+  === RUN   Test_stringToBoolErrors/input:'asdf'
+  === RUN   Test_stringToBoolErrors/input:'QWERTY'
+  --- PASS: Test_stringToBoolErrors (0.00s)
+      --- PASS: Test_stringToBoolErrors/input:'' (0.00s)
+      --- PASS: Test_stringToBoolErrors/input:'-1' (0.00s)
+      --- PASS: Test_stringToBoolErrors/input:'-0' (0.00s)
+      --- PASS: Test_stringToBoolErrors/input:'2' (0.00s)
+      --- PASS: Test_stringToBoolErrors/input:'999' (0.00s)
+      --- PASS: Test_stringToBoolErrors/input:'asdf' (0.00s)
+      --- PASS: Test_stringToBoolErrors/input:'QWERTY' (0.00s)
+  === RUN   Test_Search
+  === RUN   Test_Search/0:Unexpected_format_of_payload_(not_JSON)
+  2020/09/28 08:32:56 unmarshall failed: invalid character 'a' looking for beginning of value
+  === RUN   Test_Search/1:Missing_fields
+  === RUN   Test_Search/2:Missing_'phrase'_field
+  === RUN   Test_Search/3:Missing_'title'_field
+  === RUN   Test_Search/4:Payload_OK
+  === RUN   Test_Search/5:Wrong_`title`_field_type
+  2020/09/28 08:32:56 unmarshall failed: json: cannot unmarshal number into Go struct field Payload.title of type string
+  === RUN   Test_Search/6:Wrong_`phrase`_field_type
+  2020/09/28 08:32:56 unmarshall failed: json: cannot unmarshal bool into Go struct field Payload.phrase of type string
+  --- PASS: Test_Search (0.00s)
+      --- PASS: Test_Search/0:Unexpected_format_of_payload_(not_JSON) (0.00s)
+      --- PASS: Test_Search/1:Missing_fields (0.00s)
+      --- PASS: Test_Search/2:Missing_'phrase'_field (0.00s)
+      --- PASS: Test_Search/3:Missing_'title'_field (0.00s)
+      --- PASS: Test_Search/4:Payload_OK (0.00s)
+      --- PASS: Test_Search/5:Wrong_`title`_field_type (0.00s)
+      --- PASS: Test_Search/6:Wrong_`phrase`_field_type (0.00s)
+  === RUN   Test_SearchError
+  === RUN   Test_SearchError/0:Phrase_not_found
+  === RUN   Test_SearchError/1:Processing_too_long
+  --- PASS: Test_SearchError (0.00s)
+      --- PASS: Test_SearchError/0:Phrase_not_found (0.00s)
+      --- PASS: Test_SearchError/1:Processing_too_long (0.00s)
+  PASS
+  coverage: 45.9% of statements
+  ok  	fuzzy-search/cmd/api	(cached)	coverage: 45.9% of statements
+  ?   	fuzzy-search/internal/app/gutenbergsearch	[no test files]
+  === RUN   TestExpectedContext
+  --- PASS: TestExpectedContext (0.00s)
+  PASS
+  coverage: 77.8% of statements
+  ok  	fuzzy-search/internal/pkg/context	(cached)	coverage: 77.8% of statements
+  === RUN   TestFindBooks
+  --- PASS: TestFindBooks (0.00s)
+  === RUN   TestFindTxtLinkref
+  --- PASS: TestFindTxtLinkref (0.00s)
+  PASS
+  coverage: 25.8% of statements
+  ok  	fuzzy-search/internal/pkg/data	(cached)	coverage: 25.8% of statements
+  ?   	fuzzy-search/internal/pkg/search	[no test files]
+```
+
+62.5% of total coverage at the moment, not great, not terrible ¯\\_(ツ)_/¯ 
+
+### Current implementation concerns
+
+There is one download task/goroutine at the time which receives download requests, the main reason behind this approach
+is to emulate real user behaviour on required website, of course there is still some room to improvement but in general
+there should not be problems with that.
+
+However, given number of searching workers/goroutines (configuration) are spawned with every request, which is not a great design
+for many concurrent request to this service. More work could be focused on this part.
+
+Another thing that may be improved is fuzzy-searching approach itself. I never had experience with such mechanism 
+before, and I'm more than sure it can be implemented in better ways. Solution that I wrote seems to work just fine
+for need of this application.
+
+More unit-tests would be also required in real software development scenario, as well as functional ones,
+but for purpose of this task I did limit myself to bare minimum in that matter. I was more focused 
+to have actually working application during its development.
+
 
 ### Example app logs
 
